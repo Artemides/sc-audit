@@ -70,3 +70,56 @@ Use correct factor for numerator in the Formula:
             ((outputReserves - outputAmount) * 997);
     }
 ```
+
+# [H-3] No Slippage protection on `Tswap::swapExactOutput` makes users possible undesired `poolToken` amounts.
+
+**Description:** `Tswap::swapExactOutput` does not contain a protection in cases where `PoolToken` input amount on swap are huge due to pool demand and price spot movement, in case of large spot price movement, PoolTokens might be expensiver than usual requiring much more input tokens in order to execute a swap.
+
+**Impact:** Damages user tokens positions, possible swapping undesired amounts.
+
+**Proof of concept:**
+
+**Recommend mitigation:**
+
+1. include `maxInputAmount` param at `Tswap::swapExactOutput`.
+2. require `inputAmount` to be less or equal than `maxInputAmount`.
+
+```diff
+  function swapExactOutput(
+        IERC20 inputToken,
++        uint256 maxInputAmount,
+        IERC20 outputToken,
+        uint256 outputAmount,
+        uint64 deadline
+    )
+        public
+        revertIfZero(outputAmount)
+        revertIfDeadlinePassed(deadline)
+        returns (uint256 inputAmount)
+    {
+        uint256 inputReserves = inputToken.balanceOf(address(this));
+        uint256 outputReserves = outputToken.balanceOf(address(this));
+
+        inputAmount = getInputAmountBasedOnOutput(
+            outputAmount,
+            inputReserves,
+            outputReserves
+        );
++        require(inputAmount<= maxInputAmount);
+        _swap(inputToken, inputAmount, outputToken, outputAmount);
+    }
+
+
+```
+
+# [H-4] Incentives on every 10 swaps breaks `Protocol Invariant`
+
+**Description:** Protocol's core invariants says: _Our system works because the ratio of Token A & WETH will always stay the same. Well, for the most part. Since we add fees, our invariant technially increases._, which get's broken by `Transfering Incentives` each 10th swap.
+
+**Impact:** Damages severly the protocol, manipulating `Tswap::PriceSpot`, allowing exploits to manipulate exactly at `10th` swap in their favor.
+
+**Proof of concept:**
+
+**Recommended Mitigation:**
+
+- Use alternative swapping models
