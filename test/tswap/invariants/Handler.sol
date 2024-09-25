@@ -3,6 +3,7 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
+
 import "./../../../src/tswap/PoolFactory.sol";
 import "./../mocks/MockERC20.sol";
 contract PoolHandler is Test {
@@ -15,11 +16,11 @@ contract PoolHandler is Test {
     address lp = makeAddr("lp");
 
     // Ghost States
-    uint256 expectedDx;
-    uint256 expectedDy;
+    uint256 public expectedDx;
+    uint256 public expectedDy;
 
-    uint256 Dx;
-    uint256 Dy;
+    uint256 public Dx;
+    uint256 public Dy;
 
     constructor(TSwapPool _pool) {
         pool = _pool;
@@ -27,18 +28,11 @@ contract PoolHandler is Test {
         token = MockERC20(pool.getPoolToken());
     }
 
-    // function setUp() public {
-    //     weth = new MockERC20();
-    //     token = new MockERC20();
-    //     factory = new PoolFactory(address(weth));
-    //     pool = TSwapPool(factory.createPool(address(token)));
-    // }
-
     function addLiquidity(uint256 _amountY) public {
         uint256 amountY = bound(
             _amountY,
             pool.getMinimumWethDepositAmount(),
-            weth.balanceOf(address(pool))
+            type(uint64).max
         );
 
         expectedDy = amountY;
@@ -49,9 +43,9 @@ contract PoolHandler is Test {
 
         vm.startPrank(lp);
 
-        weth.mint(lp, Dy);
+        weth.mint(lp, expectedDy);
         token.mint(lp, expectedDx);
-        weth.approve(address(this), Dy);
+        weth.approve(address(pool), expectedDy);
         token.approve(address(pool), expectedDx);
 
         pool.deposit(amountY, 0, expectedDx, uint64(block.timestamp));
@@ -79,31 +73,31 @@ contract PoolHandler is Test {
             return;
         }
 
-        uint256 initialWethReserves = weth.balanceOf(address(pool));
-
-        expectedDy = amountY;
-        expectedDx = pool.getInputAmountBasedOnOutput(
+        uint256 _expectedDx = pool.getInputAmountBasedOnOutput(
             amountY,
             token.balanceOf(address(pool)),
-            initialWethReserves
+            weth.balanceOf(address(pool))
         );
-        if (expectedDx > type(uint64).max) {
+        if (_expectedDx > type(uint64).max) {
             return;
         }
+
+        expectedDy = amountY;
+        expectedDx = _expectedDx;
 
         if (token.balanceOf(user) < expectedDx) {
             token.mint(user, expectedDx - token.balanceOf(user) + 1);
         }
 
+        uint256 initialTokenReserves = token.balanceOf(address(pool));
+        uint256 initialWethReserves = weth.balanceOf(address(pool));
+
         vm.startPrank(user);
         token.approve(address(pool), expectedDx);
 
-        Dx = pool.swapExactOutput(
-            token,
-            weth,
-            expectedDy,
-            uint64(block.timestamp)
-        );
+        pool.swapExactOutput(token, weth, expectedDy, uint64(block.timestamp));
+
+        Dx = token.balanceOf(address(pool)) - initialTokenReserves;
         Dy = initialWethReserves - weth.balanceOf(address(pool));
 
         vm.stopPrank();

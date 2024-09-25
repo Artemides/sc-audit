@@ -16,7 +16,7 @@ pragma solidity 0.8.21;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
+import "forge-std/console.sol";
 contract TSwapPool is ERC20 {
     error TSwapPool__DeadlineHasPassed(uint64 deadline);
     error TSwapPool__MaxPoolTokenDepositTooHigh(
@@ -397,8 +397,10 @@ contract TSwapPool is ERC20 {
         }
 
         swap_count++;
+        console.log("COUNT:", swap_count);
         if (swap_count >= SWAP_COUNT_MAX) {
             swap_count = 0;
+
             outputToken.safeTransfer(msg.sender, 1_000_000_000_000_000_000);
         }
         emit Swap(
