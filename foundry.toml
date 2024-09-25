@@ -2,9 +2,7 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-
-
-[fuzz]
+solc = "0.8.21"
 
 seed = "0x1"
 

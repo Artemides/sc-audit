@@ -19,6 +19,7 @@ import {IERC20} from "forge-std/interfaces/IERC20.sol";
 
 contract PoolFactory {
     error PoolFactory__PoolAlreadyExists(address tokenAddress);
+    //i unused event, consider removing
     error PoolFactory__PoolDoesNotExist(address tokenAddress);
 
     /*//////////////////////////////////////////////////////////////
@@ -38,6 +39,7 @@ contract PoolFactory {
                                FUNCTIONS
     //////////////////////////////////////////////////////////////*/
     constructor(address wethToken) {
+        //i consider zero-address check
         i_wethToken = wethToken;
     }
 
@@ -48,6 +50,7 @@ contract PoolFactory {
         if (s_pools[tokenAddress] != address(0)) {
             revert PoolFactory__PoolAlreadyExists(tokenAddress);
         }
+        //i consider using symbol. Besides, IERC20 reverts are not contemplated
         string memory liquidityTokenName = string.concat(
             "T-Swap ",
             IERC20(tokenAddress).name()
